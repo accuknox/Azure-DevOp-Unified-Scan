@@ -10,7 +10,7 @@ steps:
 # scanType accepts a comma/space separated list:
 #   sast, sca, secret, iac, ml, api-discovery, sbom
 # -----------------------------------------------------------------------------
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'sast, sca, secret, iac'
     accuknoxEndpoint: '$(ACCUKNOX_ENDPOINT)'
@@ -27,7 +27,7 @@ steps:
 # -----------------------------------------------------------------------------
 # SBOM example (requires a Project created in the AccuKnox Console).
 # -----------------------------------------------------------------------------
-# - task: AccuKnox-Code-Analysis@1
+# - task: AccuKnox-Code-Analysis@2
 #   inputs:
 #     scanType: 'sbom'
 #     accuknoxEndpoint: '$(ACCUKNOX_ENDPOINT)'

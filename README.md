@@ -56,7 +56,7 @@ pool:
   name: selfhosted
 
 steps:
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     # Pick any combination of scans
     scanType: 'sast, sca, secret, iac, ml, api-discovery'
@@ -79,7 +79,7 @@ steps:
 ### 1. SAST
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'sast'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -92,7 +92,7 @@ steps:
 ### 2. SCA
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'sca'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -105,7 +105,7 @@ steps:
 ### 3. Secret
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'secret'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -117,7 +117,7 @@ steps:
 ### 4. IaC
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'iac'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -129,7 +129,7 @@ steps:
 ### 5. ML Static Scan
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'ml'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -141,7 +141,7 @@ steps:
 ### 6. API Discovery
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'api-discovery'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -155,7 +155,7 @@ steps:
 > **Prerequisite — Create a Project.** To associate SBOM data with the correct entity, create a **Project** in the AccuKnox Console first (**SBOM → Projects → New Project**). Use **Container** classifier for an image SBOM or **Application** for a filesystem SBOM, and pass the project name as `sbomProjectName`.
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -172,7 +172,7 @@ steps:
 ### 8. Unified — All Scans in One Task
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'sast, sca, secret, iac, ml, api-discovery, sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)

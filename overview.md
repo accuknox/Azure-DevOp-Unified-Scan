@@ -38,7 +38,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 1. SAST
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'sast'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -51,7 +51,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 2. SCA
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'sca'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -64,7 +64,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 3. Secret
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'secret'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -76,7 +76,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 4. IaC
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'iac'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -88,7 +88,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 5. ML Static Scan
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'ml'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -100,7 +100,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 6. API Discovery
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'api-discovery'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -116,7 +116,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 Filesystem SBOM:
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -131,7 +131,7 @@ Filesystem SBOM:
 Image SBOM (build/pull the image earlier in the same job):
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -146,7 +146,7 @@ Image SBOM (build/pull the image earlier in the same job):
 ### 8. Unified — all scans in one task
 
 ```yaml
-- task: AccuKnox-Code-Analysis@1
+- task: AccuKnox-Code-Analysis@2
   inputs:
     scanType: 'sast, sca, secret, iac, ml, api-discovery, sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)

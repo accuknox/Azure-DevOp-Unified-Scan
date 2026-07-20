@@ -1,6 +1,6 @@
 {
   "name": "accuknox-code-analysis",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Unified AccuKnox ASPM code-analysis task for Azure DevOps (SAST, SCA, Secret, IaC, ML, API Discovery, SBOM).",
   "main": "index.js",
   "scripts": {
