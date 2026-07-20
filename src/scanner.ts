@@ -168,7 +168,7 @@ export class CodeAnalysisScanner {
   }
 
   async runSast(i: SastInputs): Promise<number> {
-    console.log('Starting AccuKnox SAST (OpenGrep) scan...');
+    console.log('Starting AccuKnox SAST scan...');
     const args = ['scan', '--keep-results', ...this.softFailArg, 'sast', '--command', i.command];
     if (this.repoUrl) args.push('--repo-url', this.repoUrl);
     if (this.commitSha) args.push('--commit-sha', this.commitSha);
@@ -205,7 +205,7 @@ export class CodeAnalysisScanner {
       cmdArgs = i.command.trim();
     } else {
       const parts: string[] = [];
-      // --file and --directory are mutually exclusive in Checkov; prefer file when set.
+      // --file and --directory are mutually exclusive in the IaC scanner; prefer file when set.
       if (i.file.trim()) {
         parts.push('--file', i.file.trim());
       } else if (i.directory.trim()) {
