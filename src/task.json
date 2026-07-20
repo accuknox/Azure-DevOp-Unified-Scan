@@ -15,12 +15,12 @@
     "instanceNameFormat": "AccuKnox Code Analysis",
     "groups": [
         { "name": "common", "displayName": "Common Options", "isExpanded": true },
-        { "name": "sast", "displayName": "SAST (OpenGrep)", "isExpanded": false },
-        { "name": "sca", "displayName": "SCA (Trivy)", "isExpanded": false },
-        { "name": "secret", "displayName": "Secret (TruffleHog)", "isExpanded": false },
-        { "name": "iac", "displayName": "IaC (Checkov)", "isExpanded": false },
-        { "name": "ml", "displayName": "ML Static Scan (ModelScan)", "isExpanded": false },
-        { "name": "api", "displayName": "API Discovery (code2api)", "isExpanded": false },
+        { "name": "sast", "displayName": "SAST", "isExpanded": false },
+        { "name": "sca", "displayName": "SCA", "isExpanded": false },
+        { "name": "secret", "displayName": "Secret", "isExpanded": false },
+        { "name": "iac", "displayName": "IaC", "isExpanded": false },
+        { "name": "ml", "displayName": "ML Static Scan", "isExpanded": false },
+        { "name": "api", "displayName": "API Discovery", "isExpanded": false },
         { "name": "sbom", "displayName": "SBOM", "isExpanded": false }
     ],
     "inputs": [
@@ -34,12 +34,12 @@
                 "MultiSelectFlatList": "true"
             },
             "options": {
-                "sast": "SAST (OpenGrep)",
-                "sca": "SCA (Trivy)",
-                "secret": "Secret (TruffleHog)",
-                "iac": "IaC (Checkov)",
-                "ml": "ML Static Scan (ModelScan)",
-                "api-discovery": "API Discovery (code2api)",
+                "sast": "SAST",
+                "sca": "SCA",
+                "secret": "Secret",
+                "iac": "IaC",
+                "ml": "ML Static Scan",
+                "api-discovery": "API Discovery",
                 "sbom": "SBOM"
             }
         },

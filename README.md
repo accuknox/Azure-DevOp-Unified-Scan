@@ -8,7 +8,7 @@ Instead of wiring up a separate task for every scanner, configure **one task**, 
 
 ## 🎯 Key Features
 
-- ✅ **7 Scanners, One Task** – SAST (OpenGrep), SCA (Trivy), Secret (TruffleHog), IaC (Checkov), ML Static Scan (ModelScan), API Discovery (code2api) and SBOM (image + filesystem).
+- ✅ **7 Scanners, One Task** – SAST, SCA, Secret, IaC, ML Static Scan, API Discovery and SBOM (image + filesystem).
 - 🧩 **Run Any Combination** – Select one or many scans with a single comma/space separated `scanType` input.
 - ⌨️ **Command Text Per Scan** – Every scanner exposes a `*Command` input mapped directly to the CLI's `--command`.
 - 🏗️ **IaC with Frameworks** – Restrict IaC scans to one or more frameworks (e.g. `Kubernetes,Terraform`).
@@ -264,12 +264,12 @@ steps:
 1. **Pipeline runs** – A push/PR triggers the pipeline containing the task.
 2. **Scanner setup (once)** – The task validates credentials, parses `scanType`, and downloads the `accuknox-aspm-scanner` binary for the requested `scannerVersion`.
 3. **Selected scans run** – Each enabled scan executes in `--container-mode`, building its arguments from your `*Command` and scan-specific inputs:
-   - **SAST** → OpenGrep static analysis
-   - **SCA** → Trivy dependency/composition analysis
-   - **Secret** → TruffleHog secret detection
-   - **IaC** → Checkov misconfiguration checks (optionally per framework)
-   - **ML** → ModelScan static ML model analysis
-   - **API Discovery** → code2api route/endpoint discovery
+   - **SAST** → static application security analysis
+   - **SCA** → dependency/composition analysis
+   - **Secret** → secret detection
+   - **IaC** → infrastructure-as-code misconfiguration checks (optionally per framework)
+   - **ML** → static ML model analysis
+   - **API Discovery** → route/endpoint discovery
    - **SBOM** → CycloneDX bill of materials for an image or filesystem
 4. **Results uploaded to AccuKnox Console** – Using the provided `accuknoxToken` and `accuknoxLabel`.
 5. **Review findings** – Available in the AccuKnox Console: **Dashboard → Issues → Findings**, filtered by scan type.

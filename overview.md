@@ -6,7 +6,7 @@ Instead of adding a separate task for every scanner, configure one task, pick th
 
 ## Features
 
-- **7 scanners, one task** – SAST (OpenGrep), SCA (Trivy), Secret (TruffleHog), IaC (Checkov), ML Static Scan (ModelScan), API Discovery (code2api) and SBOM (image + filesystem).
+- **7 scanners, one task** – SAST, SCA, Secret, IaC, ML Static Scan, API Discovery and SBOM (image + filesystem).
 - **Run any combination** – Select one or many scans from the multi-select **Scan Types** input.
 - **Per-scan command text** – Every scanner exposes a `*Command` input mapped directly to the CLI's `--command`.
 - **IaC with frameworks** – Restrict IaC scans to one or more frameworks (e.g. `Kubernetes,Terraform`).
@@ -35,7 +35,7 @@ Each scan also exposes its own optional inputs (see the README for the full tabl
 
 All examples assume the credentials are defined as pipeline variables: `ACCUKNOX_ENDPOINT`, `ACCUKNOX_TOKEN`, `ACCUKNOX_LABEL`.
 
-### 1. SAST (OpenGrep)
+### 1. SAST
 
 ```yaml
 - task: AccuKnox-Code-Analysis@1
@@ -48,7 +48,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
     softFail: true
 ```
 
-### 2. SCA (Trivy)
+### 2. SCA
 
 ```yaml
 - task: AccuKnox-Code-Analysis@1
@@ -61,7 +61,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
     softFail: true
 ```
 
-### 3. Secret (TruffleHog)
+### 3. Secret
 
 ```yaml
 - task: AccuKnox-Code-Analysis@1
@@ -73,7 +73,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
     softFail: true
 ```
 
-### 4. IaC (Checkov)
+### 4. IaC
 
 ```yaml
 - task: AccuKnox-Code-Analysis@1
@@ -85,7 +85,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
     softFail: true
 ```
 
-### 5. ML Static Scan (ModelScan)
+### 5. ML Static Scan
 
 ```yaml
 - task: AccuKnox-Code-Analysis@1
@@ -97,7 +97,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
     softFail: true
 ```
 
-### 6. API Discovery (code2api)
+### 6. API Discovery
 
 ```yaml
 - task: AccuKnox-Code-Analysis@1
