@@ -20,7 +20,8 @@ Instead of wiring up a separate task for every scanner, configure **one task**, 
 
 ## ⚠️ Prerequisites
 
-- 🐳 **Self-hosted agent with Docker** – Each scan runs in container mode, so the agent must have Docker available and network access to pull scanner images.
+- 🖥️ **Any Linux or Windows agent** – SAST, SCA, Secret, IaC and SBOM run the scanner natively, so Microsoft-hosted agents work; no Docker required.
+- 🐳 **Docker (only for ML Static Scan and API Discovery)** – These two scans still run in container mode, so selecting either one requires an agent with Docker available and network access to pull scanner images.
 - 🔐 **AccuKnox Console Access** – Sign in to your AccuKnox tenant.
 - 🗝️ **API Token** – Retrieve this from the AccuKnox Console (**Settings → Tokens**).
 - 🏷️ **Label Created in Console** – For tagging the uploaded scan reports.
@@ -59,7 +60,7 @@ steps:
 - task: AccuKnox-Code-Analysis@2
   inputs:
     # Pick any combination of scans
-    scanType: 'sast, sca, secret, iac, ml, api-discovery'
+    scanType: 'sast, sca, secret, iac'
 
     # AccuKnox credentials
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -169,12 +170,12 @@ steps:
 
 > For an **image** SBOM, set `sbomScanType: 'image'` and `sbomImageRef: 'myapp:latest'` (build/pull the image earlier in the same job).
 
-### 8. Unified — All Scans in One Task
+### 8. Unified — Multiple Scans in One Task
 
 ```yaml
 - task: AccuKnox-Code-Analysis@2
   inputs:
-    scanType: 'sast, sca, secret, iac, ml, api-discovery, sbom'
+    scanType: 'sast, sca, secret, iac, sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
     accuknoxToken: $(ACCUKNOX_TOKEN)
     accuknoxLabel: $(ACCUKNOX_LABEL)
@@ -184,6 +185,8 @@ steps:
     sbomScanPath: '.'
     sbomProjectName: 'my-project'
 ```
+
+> Add `ml` and `api-discovery` to `scanType` to include those scans — they run in container mode, so the agent needs Docker.
 
 ---
 
@@ -197,7 +200,7 @@ steps:
 | `accuknoxEndpoint` | URL of the AccuKnox Console to push results | Yes | — |
 | `accuknoxToken` | API token for authenticating with AccuKnox SaaS | Yes | — |
 | `accuknoxLabel` | Label used in AccuKnox SaaS to organise results | Yes | — |
-| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.7-rc.1` |
+| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.7-rc.3` |
 | `softFail` | Prevent the task from failing on findings (all scans) | No | `true` |
 
 ### SAST (`sast`)
@@ -263,7 +266,7 @@ steps:
 
 1. **Pipeline runs** – A push/PR triggers the pipeline containing the task.
 2. **Scanner setup (once)** – The task validates credentials, parses `scanType`, and downloads the `accuknox-aspm-scanner` binary for the requested `scannerVersion`.
-3. **Selected scans run** – Each enabled scan executes in `--container-mode`, building its arguments from your `*Command` and scan-specific inputs:
+3. **Selected scans run** – Each enabled scan builds its arguments from your `*Command` and scan-specific inputs. Most run natively on the agent; ML and API Discovery run in `--container-mode`:
    - **SAST** → static application security analysis
    - **SCA** → dependency/composition analysis
    - **Secret** → secret detection

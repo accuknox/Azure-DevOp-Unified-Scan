@@ -62,12 +62,13 @@ export async function run(): Promise<void> {
       endpoint,
       token,
       label,
-      version: tl.getInput('scannerVersion', false) || 'v0.14.7-rc.1',
+      version: tl.getInput('scannerVersion', false) || 'v0.14.7-rc.3',
       softFail,
     };
 
     const scanner = new CodeAnalysisScanner(cfg);
     await scanner.setup();
+    await scanner.installTools(selected);
 
     // Run each selected scan; collect the worst exit code and any failures.
     const failures: string[] = [];

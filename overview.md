@@ -15,7 +15,8 @@ Instead of adding a separate task for every scanner, configure one task, pick th
 
 ## Prerequisites
 
-- A self-hosted Azure DevOps agent with **Docker** available (the scanner runs each tool in container mode).
+- Any **Linux or Windows** Azure DevOps agent, hosted or self-hosted — SAST, SCA, Secret, IaC and SBOM run natively, with no Docker requirement.
+- **Docker** is only needed if you select **ML Static Scan** or **API Discovery**, which still run in container mode.
 - An **AccuKnox Console** tenant, an **API token**, and a **label** to tag the uploaded results.
 
 ## Inputs
@@ -26,7 +27,7 @@ Instead of adding a separate task for every scanner, configure one task, pick th
 | `accuknoxEndpoint` | AccuKnox Console URL to push results to | Yes | — |
 | `accuknoxToken` | AccuKnox API token | Yes | — |
 | `accuknoxLabel` | Label for associating scan results | Yes | — |
-| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.7-rc.1` |
+| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.7-rc.3` |
 | `softFail` | Do not fail the task on findings | No | `true` |
 
 Each scan also exposes its own optional inputs (see the README for the full table).
@@ -143,12 +144,12 @@ Image SBOM (build/pull the image earlier in the same job):
     softFail: true
 ```
 
-### 8. Unified — all scans in one task
+### 8. Unified — multiple scans in one task
 
 ```yaml
 - task: AccuKnox-Code-Analysis@2
   inputs:
-    scanType: 'sast, sca, secret, iac, ml, api-discovery, sbom'
+    scanType: 'sast, sca, secret, iac, sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
     accuknoxToken: $(ACCUKNOX_TOKEN)
     accuknoxLabel: $(ACCUKNOX_LABEL)

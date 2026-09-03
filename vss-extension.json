@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "accuknox-code-analysis",
     "name": "AccuKnox Code Analysis",
-    "version": "2.0.0",
+    "version": "2.3.0",
     "publisher": "AccuKnox",
     "targets": [
         {

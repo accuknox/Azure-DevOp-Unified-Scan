@@ -93,11 +93,13 @@ export class CodeAnalysisScanner {
 
   /** Download the accuknox-aspm-scanner binary once and make it executable. */
   async setup(): Promise<void> {
-    const dest = path.join(os.tmpdir(), 'accuknox-aspm-scanner');
-    const url = `${SCANNER_BASE_URL}/${this.cfg.version}/accuknox-aspm-scanner`;
-    console.log(`Downloading AccuKnox ASPM Scanner (${this.cfg.version})...`);
+    const isWindows = process.platform === 'win32';
+    const binName = isWindows ? 'accuknox-aspm-scanner.exe' : 'accuknox-aspm-scanner';
+    const dest = path.join(os.tmpdir(), binName);
+    const url = `${SCANNER_BASE_URL}/${this.cfg.version}/${binName}`;
+    console.log(`Downloading AccuKnox ASPM Scanner (${this.cfg.version}, ${process.platform})...`);
     await this.download(url, dest);
-    fs.chmodSync(dest, 0o755);
+    if (!isWindows) fs.chmodSync(dest, 0o755);
     this.scannerBin = dest;
     console.log(`AccuKnox ASPM scanner installed at ${dest}`);
   }
@@ -131,6 +133,65 @@ export class CodeAnalysisScanner {
       };
       request(url, 0);
     });
+  }
+
+  /**
+   * Scans that run natively, mapped to [tool install --type, path to verify].
+   * Verify paths mirror the CLI's ToolManager.TOOL_PATHS. sca and sbom both
+   * shell out to Trivy, which ships as the `container` tool.
+   * ml and api-discovery are absent: they have no local tool and stay container-mode.
+   */
+  private static readonly TOOL_FOR_SCAN: Record<string, [string, string]> = {
+    sast: ['sast', path.join('sast', 'sast')],
+    sca: ['container', 'container'],
+    sbom: ['container', 'container'],
+    secret: ['secret', 'secret'],
+    iac: ['iac', 'iac'],
+  };
+
+  /** Where `tool install` places binaries — mirrors the CLI's ToolManager. */
+  private get toolsDir(): string {
+    if (process.platform === 'win32') {
+      return path.join(process.env.USERPROFILE || os.homedir(), 'AppData', 'Local', 'Programs', 'AccuKnox');
+    }
+    const globalDir = '/usr/share/accuknox-aspm-scanner/tools';
+    return fs.existsSync(globalDir) ? globalDir : path.join(os.homedir(), '.local', 'bin', 'accuknox');
+  }
+
+  /** Windows tools land as .exe/.bat companions, so check those too. */
+  private toolExists(relPath: string): boolean {
+    const base = path.join(this.toolsDir, relPath);
+    return [base, `${base}.exe`, `${base}.bat`, `${base}.cmd`].some((p) => fs.existsSync(p));
+  }
+
+  private async installTool(type: string, verifyRel: string): Promise<void> {
+    if (this.toolExists(verifyRel)) {
+      console.log(`Scanner tool '${type}' already present, skipping install.`);
+      return;
+    }
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      console.log(`Installing scanner tool '${type}' (attempt ${attempt}/3)...`);
+      // `tool install` exits 0 even when the download fails, so the exit code
+      // proves nothing — verify the binary actually landed instead.
+      await this.exec(['tool', 'install', '--type', type]);
+      if (this.toolExists(verifyRel)) return;
+      console.log(`WARNING: '${type}' not found under ${this.toolsDir} after install; retrying...`);
+    }
+    throw new Error(
+      `Failed to install scanner tool '${type}' after 3 attempts (expected ${path.join(this.toolsDir, verifyRel)}).`
+    );
+  }
+
+  /** Install local tool binaries for whichever selected scans run natively. */
+  async installTools(selected: Set<string>): Promise<void> {
+    const needed = new Map<string, string>();
+    for (const scan of selected) {
+      const entry = CodeAnalysisScanner.TOOL_FOR_SCAN[scan];
+      if (entry) needed.set(entry[0], entry[1]);
+    }
+    for (const [type, verifyRel] of needed) {
+      await this.installTool(type, verifyRel);
+    }
   }
 
   /** Common env injected into every scanner invocation. */
@@ -172,14 +233,14 @@ export class CodeAnalysisScanner {
     const args = ['scan', '--keep-results', ...this.softFailArg, 'sast', '--command', i.command];
     if (this.repoUrl) args.push('--repo-url', this.repoUrl);
     if (this.commitSha) args.push('--commit-sha', this.commitSha);
-    args.push('--pipeline-id', this.pipelineId, '--job-url', this.jobUrl, '--container-mode');
+    args.push('--pipeline-id', this.pipelineId, '--job-url', this.jobUrl);
     if (i.severity.trim()) args.push('--severity', i.severity.trim());
     return this.exec(args);
   }
 
   async runSca(i: ScaInputs): Promise<number> {
     console.log('Starting AccuKnox SCA scan...');
-    const args = ['scan', ...this.softFailArg, 'sca', '--command', i.command, '--container-mode'];
+    const args = ['scan', ...this.softFailArg, 'sca', '--command', i.command];
     if (i.severity.trim()) args.push('--severity', i.severity.trim());
     return this.exec(args);
   }
@@ -194,7 +255,7 @@ export class CodeAnalysisScanner {
     }
     let command = i.command;
     if (i.additionalArguments.trim()) command = `${command} ${i.additionalArguments.trim()}`;
-    const args = ['scan', '--keep-results', ...this.softFailArg, 'secret', '--command', command, '--container-mode'];
+    const args = ['scan', '--keep-results', ...this.softFailArg, 'secret', '--command', command];
     return this.exec(args);
   }
 
@@ -220,7 +281,7 @@ export class CodeAnalysisScanner {
       }
       cmdArgs = parts.join(' ');
     }
-    const args = ['scan', ...this.softFailArg, 'iac', '--command', cmdArgs, '--container-mode'];
+    const args = ['scan', ...this.softFailArg, 'iac', '--command', cmdArgs];
     if (this.repoUrl) args.push('--repo-url', this.repoUrl);
     if (this.commitRef) args.push('--repo-branch', this.commitRef);
     return this.exec(args);
@@ -228,6 +289,8 @@ export class CodeAnalysisScanner {
 
   async runMl(i: MlInputs): Promise<number> {
     console.log('Starting AccuKnox ML Static scan...');
+    // Container-only upstream: the CLI has no local ml-scan tool yet, so Docker is still
+    // required for this scan. Drop --container-mode once `tool install --type ml-scan` ships.
     const args = ['scan', ...this.softFailArg, 'ml-scan', '--command', i.command, '--container-mode'];
     if (this.repoUrl) args.push('--repo-url', this.repoUrl);
     if (this.commitRef) args.push('--commit-ref', this.commitRef);
@@ -238,6 +301,8 @@ export class CodeAnalysisScanner {
 
   async runApi(i: ApiInputs): Promise<number> {
     console.log('Starting AccuKnox API Discovery scan...');
+    // Container-only upstream: local binary packaging (`tool install --type api-discovery`)
+    // is not released yet. Drop --container-mode once it is.
     const args = ['scan', '--keep-results', ...this.softFailArg, 'api-discovery', '--command', i.command, '--container-mode'];
     if (this.repoUrl) args.push('--repo-url', this.repoUrl);
     return this.exec(args);
@@ -275,7 +340,6 @@ export class CodeAnalysisScanner {
       '--command',
       cmd,
       '--generate-sbom',
-      '--container-mode',
     ];
     const code = await this.exec(args);
     try {
