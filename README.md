@@ -8,8 +8,9 @@ Instead of wiring up a separate task for every scanner, configure **one task**, 
 
 ## 🎯 Key Features
 
-- ✅ **7 Scanners, One Task** – SAST, SCA, Secret, IaC, ML Static Scan, API Discovery and SBOM (image + filesystem).
+- ✅ **7 Scanners, One Task** – SAST (optional AI-SAST), SCA, Secret, IaC, ML Static Scan, API Discovery and SBOM (image + filesystem).
 - 🧩 **Run Any Combination** – Select one or many scans with a single comma/space separated `scanType` input.
+- 🤖 **AI-SAST** – After OpenGrep SAST, optionally run CodeAssure AI analysis (`enableAiSast`) to triage findings.
 - ⌨️ **Command Text Per Scan** – Every scanner exposes a `*Command` input mapped directly to the CLI's `--command`.
 - 🏗️ **IaC with Frameworks** – Restrict IaC scans to one or more frameworks (e.g. `Kubernetes,Terraform`).
 - 📦 **SBOM for Image & Filesystem** – Generate a CycloneDX SBOM from a container image or your source tree.
@@ -21,6 +22,7 @@ Instead of wiring up a separate task for every scanner, configure **one task**, 
 ## ⚠️ Prerequisites
 
 - 🖥️ **Any Linux or Windows agent** – SAST, SCA, Secret, IaC and SBOM run the scanner natively, so Microsoft-hosted agents work; no Docker required.
+- 🤖 **AI-SAST** – Native CodeAssure install is Linux-only. Enable with `enableAiSast` or `ACCUKNOX_ENABLE_AI_SAST=TRUE`. Put the LLM key in `ACCUKNOX_AI_API_KEY` (provider-agnostic) and map it on the task with `env:`. In `codeassure.json` set `"api_key": "$ACCUKNOX_AI_API_KEY"`. Optionally pass the config path as `sastCodeassureConfig`.
 - 🐳 **Docker (only for ML Static Scan and API Discovery)** – These two scans still run in container mode, so selecting either one requires an agent with Docker available and network access to pull scanner images.
 - 🔐 **AccuKnox Console Access** – Sign in to your AccuKnox tenant.
 - 🗝️ **API Token** – Retrieve this from the AccuKnox Console (**Settings → Tokens**).
@@ -46,6 +48,8 @@ Define the following as pipeline variables (mark the token as secret):
 | `ACCUKNOX_TOKEN` | Your AccuKnox API token |
 | `ACCUKNOX_ENDPOINT` | The AccuKnox Console URL (e.g. `cspm.demo.accuknox.com`) |
 | `ACCUKNOX_LABEL` | Label used to tag and group scan results |
+| `ACCUKNOX_ENABLE_AI_SAST` (optional) | Set to `TRUE` to enable AI-SAST (same as `enableAiSast`) |
+| `ACCUKNOX_AI_API_KEY` (optional) | Provider-agnostic LLM API key for AI-SAST. Mark as secret and map it on the task with `env:`. `codeassure.json` must use `"api_key": "$ACCUKNOX_AI_API_KEY"` |
 
 ### Step 3: Add the Task to Your Pipeline
 
@@ -88,6 +92,41 @@ steps:
     accuknoxLabel: $(ACCUKNOX_LABEL)
     sastSeverity: 'HIGH,CRITICAL'
     softFail: true
+```
+
+### 1b. SAST with AI analysis
+
+Enable with `enableAiSast: true` or `ACCUKNOX_ENABLE_AI_SAST=TRUE`. Store the LLM key in `ACCUKNOX_AI_API_KEY` (any provider). Use a Linux agent.
+
+```yaml
+- task: AccuKnox-Code-Analysis@2
+  env:
+    ACCUKNOX_ENABLE_AI_SAST: 'TRUE'   # optional if enableAiSast is true
+    ACCUKNOX_AI_API_KEY: $(ACCUKNOX_AI_API_KEY)
+  inputs:
+    scanType: 'sast'
+    accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
+    accuknoxToken: $(ACCUKNOX_TOKEN)
+    accuknoxLabel: $(ACCUKNOX_LABEL)
+    sastSeverity: 'HIGH,CRITICAL'
+    enableAiSast: true
+    sastAiScanSeverity: 'HIGH,CRITICAL'
+    # sastCodeassureConfig: 'codeassure.json'   # optional
+    softFail: true
+```
+
+Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `api_base` pick the actual LLM:
+
+```json
+{
+  "model": {
+    "provider": "openai-compatible",
+    "name": "your-model-name",
+    "api_base": "https://your-llm-endpoint",
+    "api_key": "$ACCUKNOX_AI_API_KEY",
+    "tool_calling": true
+  }
+}
 ```
 
 ### 2. SCA
@@ -200,7 +239,7 @@ steps:
 | `accuknoxEndpoint` | URL of the AccuKnox Console to push results | Yes | — |
 | `accuknoxToken` | API token for authenticating with AccuKnox SaaS | Yes | — |
 | `accuknoxLabel` | Label used in AccuKnox SaaS to organise results | Yes | — |
-| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.7-rc.3` |
+| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.8` |
 | `softFail` | Prevent the task from failing on findings (all scans) | No | `true` |
 
 ### SAST (`sast`)
@@ -209,6 +248,9 @@ steps:
 |-------|-------------|---------|
 | `sastCommand` | Command text passed to `--command` (target to scan) | `.` |
 | `sastSeverity` | Comma-separated severities (`LOW, MEDIUM, HIGH, CRITICAL`) | `HIGH` |
+| `enableAiSast` | After OpenGrep SAST, run CodeAssure AI analysis (`--ai-analysis`). Same as `ACCUKNOX_ENABLE_AI_SAST=TRUE` | `false` |
+| `sastAiScanSeverity` | OpenGrep impacts sent to CodeAssure (`--aiscan-severity`). Shown when AI-SAST is on | `HIGH,CRITICAL` |
+| `sastCodeassureConfig` | Optional path to `codeassure.json` (`--codeassure-config`). Use `"api_key": "$ACCUKNOX_AI_API_KEY"` | `""` |
 
 ### SCA (`sca`)
 
@@ -267,7 +309,7 @@ steps:
 1. **Pipeline runs** – A push/PR triggers the pipeline containing the task.
 2. **Scanner setup (once)** – The task validates credentials, parses `scanType`, and downloads the `accuknox-aspm-scanner` binary for the requested `scannerVersion`.
 3. **Selected scans run** – Each enabled scan builds its arguments from your `*Command` and scan-specific inputs. Most run natively on the agent; ML and API Discovery run in `--container-mode`:
-   - **SAST** → static application security analysis
+   - **SAST** → static application security analysis (optional **AI-SAST** via `enableAiSast`)
    - **SCA** → dependency/composition analysis
    - **Secret** → secret detection
    - **IaC** → infrastructure-as-code misconfiguration checks (optionally per framework)

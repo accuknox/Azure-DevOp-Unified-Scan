@@ -9,6 +9,10 @@ steps:
 # Run any combination of scans in a single task.
 # scanType accepts a comma/space separated list:
 #   sast, sca, secret, iac, ml, api-discovery, sbom
+# For AI-SAST, map ACCUKNOX_ENABLE_AI_SAST and ACCUKNOX_AI_API_KEY:
+#   env:
+#     ACCUKNOX_ENABLE_AI_SAST: 'TRUE'
+#     ACCUKNOX_AI_API_KEY: $(ACCUKNOX_AI_API_KEY)
 # -----------------------------------------------------------------------------
 - task: AccuKnox-Code-Analysis@2
   inputs:
@@ -20,6 +24,8 @@ steps:
 
     # SAST – override default severity (HIGH)
     sastSeverity: 'HIGH,CRITICAL'
+    # enableAiSast: true
+    # sastAiScanSeverity: 'HIGH,CRITICAL'
 
     # IaC – restrict to specific frameworks
     iacFramework: 'Kubernetes,Terraform'
