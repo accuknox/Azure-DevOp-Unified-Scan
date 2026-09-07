@@ -10,7 +10,7 @@
     "version": {
         "Major": 2,
         "Minor": 4,
-        "Patch": 0
+        "Patch": 1
     },
     "instanceNameFormat": "AccuKnox Code Analysis",
     "groups": [
@@ -68,7 +68,7 @@
             "name": "scannerVersion",
             "type": "string",
             "label": "Scanner Version",
-            "defaultValue": "v0.14.8",
+            "defaultValue": "v0.14.9",
             "required": false,
             "groupName": "common",
             "helpMarkDown": "Git tag of the accuknox-aspm-scanner binary to download (must include the sca, ml and api-discovery scanners)."

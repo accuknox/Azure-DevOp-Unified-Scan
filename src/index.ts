@@ -67,7 +67,7 @@ export async function run(): Promise<void> {
       endpoint,
       token,
       label,
-      version: tl.getInput('scannerVersion', false) || 'v0.14.8',
+      version: tl.getInput('scannerVersion', false) || 'v0.14.9',
       softFail,
     };
 

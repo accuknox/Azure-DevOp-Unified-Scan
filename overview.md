@@ -28,7 +28,7 @@ Instead of adding a separate task for every scanner, configure one task, pick th
 | `accuknoxEndpoint` | AccuKnox Console URL to push results to | Yes | — |
 | `accuknoxToken` | AccuKnox API token | Yes | — |
 | `accuknoxLabel` | Label for associating scan results | Yes | — |
-| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.8` |
+| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.9` |
 | `softFail` | Do not fail the task on findings | No | `true` |
 
 Each scan also exposes its own optional inputs (see the README for the full table).

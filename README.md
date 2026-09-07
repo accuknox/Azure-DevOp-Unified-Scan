@@ -239,7 +239,7 @@ Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `ap
 | `accuknoxEndpoint` | URL of the AccuKnox Console to push results | Yes | — |
 | `accuknoxToken` | API token for authenticating with AccuKnox SaaS | Yes | — |
 | `accuknoxLabel` | Label used in AccuKnox SaaS to organise results | Yes | — |
-| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.8` |
+| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.9` |
 | `softFail` | Prevent the task from failing on findings (all scans) | No | `true` |
 
 ### SAST (`sast`)
