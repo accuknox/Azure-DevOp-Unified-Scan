@@ -162,6 +162,7 @@ export async function run(): Promise<void> {
           command: tl.getInput('sbomCommand', false) || '',
           severity: tl.getInput('sbomSeverity', false) || '',
           projectName: tl.getInput('sbomProjectName', false) || '',
+          enrichLicenses: tl.getBoolInput('sbomEnrichLicenses', false),
         })
       );
     }

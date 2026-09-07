@@ -42,4 +42,5 @@ steps:
 #     sbomScanType: 'filesystem'
 #     sbomScanPath: '.'
 #     sbomProjectName: 'my-project'
+#     # sbomEnrichLicenses: true   # filesystem only; scanner newer than v0.14.9
 #     softFail: true

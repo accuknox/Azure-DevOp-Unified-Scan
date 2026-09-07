@@ -10,7 +10,7 @@
     "version": {
         "Major": 2,
         "Minor": 4,
-        "Patch": 1
+        "Patch": 2
     },
     "instanceNameFormat": "AccuKnox Code Analysis",
     "groups": [
@@ -312,6 +312,16 @@
             "required": false,
             "groupName": "sbom",
             "helpMarkDown": "Project name (AccuKnox entity). Required when SBOM is selected."
+        },
+        {
+            "name": "sbomEnrichLicenses",
+            "type": "boolean",
+            "label": "Enrich SBOM licenses (Syft)",
+            "defaultValue": false,
+            "required": false,
+            "groupName": "sbom",
+            "visibleRule": "sbomScanType = filesystem",
+            "helpMarkDown": "Filesystem SBOM only. After Trivy, run Syft and copy missing SPDX licenses onto matching packages (--enrich-licenses). Default off. Requires a scanner that supports this flag (newer than v0.14.9)."
         }
     ],
     "execution": {

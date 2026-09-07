@@ -58,6 +58,7 @@ export interface SbomInputs {
   command: string;
   severity: string;
   projectName: string;
+  enrichLicenses: boolean;
 }
 
 /**
@@ -359,6 +360,11 @@ export class CodeAnalysisScanner {
       cmd,
       '--generate-sbom',
     ];
+    if (i.enrichLicenses) {
+      // Filesystem-only CLI flag; image/rootfs logs a warning and skips Syft.
+      await this.installTool('syft', 'syft');
+      args.push('--enrich-licenses');
+    }
     const code = await this.exec(args);
     try {
       if (fs.existsSync('results.json')) fs.copyFileSync('results.json', 'results-sbom.json');

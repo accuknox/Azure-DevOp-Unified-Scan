@@ -145,6 +145,7 @@ Filesystem SBOM:
     sbomScanType: 'filesystem'
     sbomScanPath: '.'
     sbomProjectName: 'my-project'   # required for SBOM
+    # sbomEnrichLicenses: true        # optional; needs scanner newer than v0.14.9
     softFail: true
 ```
 
