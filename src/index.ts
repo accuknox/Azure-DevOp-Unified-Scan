@@ -67,7 +67,7 @@ export async function run(): Promise<void> {
       endpoint,
       token,
       label,
-      version: tl.getInput('scannerVersion', false) || 'v0.14.8',
+      version: tl.getInput('scannerVersion', false) || 'v0.14.9',
       softFail,
     };
 
@@ -162,6 +162,7 @@ export async function run(): Promise<void> {
           command: tl.getInput('sbomCommand', false) || '',
           severity: tl.getInput('sbomSeverity', false) || '',
           projectName: tl.getInput('sbomProjectName', false) || '',
+          enrichLicenses: tl.getBoolInput('sbomEnrichLicenses', false),
         })
       );
     }

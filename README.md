@@ -13,7 +13,7 @@ Instead of wiring up a separate task for every scanner, configure **one task**, 
 - 🤖 **AI-SAST** – After OpenGrep SAST, optionally run CodeAssure AI analysis (`enableAiSast`) to triage findings.
 - ⌨️ **Command Text Per Scan** – Every scanner exposes a `*Command` input mapped directly to the CLI's `--command`.
 - 🏗️ **IaC with Frameworks** – Restrict IaC scans to one or more frameworks (e.g. `Kubernetes,Terraform`).
-- 📦 **SBOM for Image & Filesystem** – Generate a CycloneDX SBOM from a container image or your source tree.
+- 📦 **SBOM for Image & Filesystem** – Generate a CycloneDX SBOM from a container image or your source tree. Optional Syft license enrich (`sbomEnrichLicenses`) for filesystem SBOM.
 - 🔒 **Shift Left Security** – Integrate all checks directly into your Azure Pipelines.
 - 📥 **Seamless AccuKnox Console Integration** – Findings flow automatically to the AccuKnox dashboard.
 
@@ -204,6 +204,7 @@ Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `ap
     sbomScanType: 'filesystem'
     sbomScanPath: '.'
     sbomProjectName: 'my-project'   # required for SBOM
+    # sbomEnrichLicenses: true        # optional; needs scanner newer than v0.14.9
     softFail: true
 ```
 
@@ -239,7 +240,7 @@ Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `ap
 | `accuknoxEndpoint` | URL of the AccuKnox Console to push results | Yes | — |
 | `accuknoxToken` | API token for authenticating with AccuKnox SaaS | Yes | — |
 | `accuknoxLabel` | Label used in AccuKnox SaaS to organise results | Yes | — |
-| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.8` |
+| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.9` |
 | `softFail` | Prevent the task from failing on findings (all scans) | No | `true` |
 
 ### SAST (`sast`)
@@ -301,6 +302,7 @@ Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `ap
 | `sbomCommand` | Raw command text passed to `--command`. Overrides the structured inputs above | `""` |
 | `sbomSeverity` | Comma-separated severities | `""` |
 | `sbomProjectName` | Project name (AccuKnox entity). **Required** when `sbom` is selected | `""` |
+| `sbomEnrichLicenses` | Filesystem SBOM only: after Trivy, run Syft and copy missing SPDX licenses (`--enrich-licenses`). Default off. Needs a scanner newer than `v0.14.9`. | `false` |
 
 ---
 
@@ -315,7 +317,7 @@ Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `ap
    - **IaC** → infrastructure-as-code misconfiguration checks (optionally per framework)
    - **ML** → static ML model analysis
    - **API Discovery** → route/endpoint discovery
-   - **SBOM** → CycloneDX bill of materials for an image or filesystem
+   - **SBOM** → CycloneDX bill of materials for an image or filesystem (optional Syft license enrich via `sbomEnrichLicenses`)
 4. **Results uploaded to AccuKnox Console** – Using the provided `accuknoxToken` and `accuknoxLabel`.
 5. **Review findings** – Available in the AccuKnox Console: **Dashboard → Issues → Findings**, filtered by scan type.
 6. **Pipeline decision** – If `softFail` is `false`, the task fails when any selected scan reports findings.
