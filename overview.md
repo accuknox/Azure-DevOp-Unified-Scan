@@ -6,7 +6,7 @@ Instead of adding a separate task for every scanner, configure one task, pick th
 
 ## Features
 
-- **7 scanners, one task** – SAST, SCA, Secret, IaC, ML Static Scan, API Discovery and SBOM (image + filesystem).
+- **7 scanners, one task** – SAST (optional AI-SAST), SCA, Secret, IaC, ML Static Scan, API Discovery and SBOM (image + filesystem).
 - **Run any combination** – Select one or many scans from the multi-select **Scan Types** input.
 - **Per-scan command text** – Every scanner exposes a `*Command` input mapped directly to the CLI's `--command`.
 - **IaC with frameworks** – Restrict IaC scans to one or more frameworks (e.g. `Kubernetes,Terraform`).
@@ -16,6 +16,7 @@ Instead of adding a separate task for every scanner, configure one task, pick th
 ## Prerequisites
 
 - Any **Linux or Windows** Azure DevOps agent, hosted or self-hosted — SAST, SCA, Secret, IaC and SBOM run natively, with no Docker requirement.
+- **AI-SAST** runs on **Linux or Windows**. Enable with `enableAiSast` or `ACCUKNOX_ENABLE_AI_SAST=TRUE`. Map `ACCUKNOX_AI_API_KEY` on the task with `env:`, and set `codeassure.json` `api_key` to `$ACCUKNOX_AI_API_KEY`.
 - **Docker** is only needed if you select **ML Static Scan** or **API Discovery**, which still run in container mode.
 - An **AccuKnox Console** tenant, an **API token**, and a **label** to tag the uploaded results.
 
@@ -27,7 +28,9 @@ Instead of adding a separate task for every scanner, configure one task, pick th
 | `accuknoxEndpoint` | AccuKnox Console URL to push results to | Yes | — |
 | `accuknoxToken` | AccuKnox API token | Yes | — |
 | `accuknoxLabel` | Label for associating scan results | Yes | — |
-| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.7-rc.3` |
+| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary (GitHub). Ignored if `scannerPath` or a bundled CLI is present | No | `v0.15.1` |
+| `scannerPath` | Absolute path to a CLI already on the agent. Skips GitHub | No | `""` |
+| `scannerDownloadUrl` | Internal HTTPS URL of the CLI. Used when path/bundle are empty | No | `""` |
 | `softFail` | Do not fail the task on findings | No | `true` |
 
 Each scan also exposes its own optional inputs (see the README for the full table).
@@ -39,7 +42,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 1. SAST
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sast'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -49,10 +52,28 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
     softFail: true
 ```
 
+### 1b. SAST with AI analysis
+
+```yaml
+- task: AccuKnox-Code-Analysis@3
+  env:
+    ACCUKNOX_ENABLE_AI_SAST: 'TRUE'
+    ACCUKNOX_AI_API_KEY: $(ACCUKNOX_AI_API_KEY)
+  inputs:
+    scanType: 'sast'
+    accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
+    accuknoxToken: $(ACCUKNOX_TOKEN)
+    accuknoxLabel: $(ACCUKNOX_LABEL)
+    sastSeverity: 'HIGH,CRITICAL'
+    enableAiSast: true
+    sastAiScanSeverity: 'HIGH,CRITICAL'
+    softFail: true
+```
+
 ### 2. SCA
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sca'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -65,7 +86,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 3. Secret
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'secret'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -77,7 +98,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 4. IaC
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'iac'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -89,7 +110,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 5. ML Static Scan
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'ml'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -101,7 +122,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 6. API Discovery
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'api-discovery'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -117,7 +138,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 Filesystem SBOM:
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -126,13 +147,14 @@ Filesystem SBOM:
     sbomScanType: 'filesystem'
     sbomScanPath: '.'
     sbomProjectName: 'my-project'   # required for SBOM
+    # sbomEnrichLicenses: true        # optional; needs scanner newer than v0.14.9
     softFail: true
 ```
 
 Image SBOM (build/pull the image earlier in the same job):
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -147,7 +169,7 @@ Image SBOM (build/pull the image earlier in the same job):
 ### 8. Unified — multiple scans in one task
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sast, sca, secret, iac, sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)

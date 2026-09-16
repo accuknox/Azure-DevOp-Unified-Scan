@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import * as http from 'http';
 import * as https from 'https';
 import { spawn } from 'child_process';
 
@@ -12,11 +13,18 @@ export interface ScannerConfig {
   label: string;
   version: string;
   softFail: boolean;
+  /** Absolute path to accuknox-aspm-scanner[.exe] already on the agent. Skips download. */
+  scannerPath?: string;
+  /** Alternate HTTPS URL to fetch the CLI (internal mirror). Overrides GitHub. */
+  scannerDownloadUrl?: string;
 }
 
 export interface SastInputs {
   command: string;
   severity: string;
+  aiAnalysis: boolean;
+  aiScanSeverity: string;
+  codeassureConfig: string;
 }
 
 export interface ScaInputs {
@@ -55,6 +63,7 @@ export interface SbomInputs {
   command: string;
   severity: string;
   projectName: string;
+  enrichLicenses: boolean;
 }
 
 /**
@@ -91,13 +100,34 @@ export class CodeAnalysisScanner {
         : 'unknown';
   }
 
-  /** Download the accuknox-aspm-scanner binary once and make it executable. */
+  /** Resolve accuknox-aspm-scanner: explicit path, VSIX-bundled copy, then download. */
   async setup(): Promise<void> {
     const isWindows = process.platform === 'win32';
     const binName = isWindows ? 'accuknox-aspm-scanner.exe' : 'accuknox-aspm-scanner';
+
+    const explicit = (this.cfg.scannerPath || '').trim();
+    if (explicit) {
+      if (!fs.existsSync(explicit)) {
+        throw new Error(`scannerPath not found: ${explicit}`);
+      }
+      this.scannerBin = explicit;
+      console.log(`Using scanner from scannerPath: ${explicit}`);
+      return;
+    }
+
+    const bundled = path.join(__dirname, 'bin', binName);
+    if (fs.existsSync(bundled)) {
+      if (!isWindows) fs.chmodSync(bundled, 0o755);
+      this.scannerBin = bundled;
+      console.log(`Using bundled AccuKnox ASPM scanner at ${bundled}`);
+      return;
+    }
+
     const dest = path.join(os.tmpdir(), binName);
-    const url = `${SCANNER_BASE_URL}/${this.cfg.version}/${binName}`;
-    console.log(`Downloading AccuKnox ASPM Scanner (${this.cfg.version}, ${process.platform})...`);
+    const url =
+      (this.cfg.scannerDownloadUrl || '').trim() ||
+      `${SCANNER_BASE_URL}/${this.cfg.version}/${binName}`;
+    console.log(`Downloading AccuKnox ASPM Scanner from ${url}...`);
     await this.download(url, dest);
     if (!isWindows) fs.chmodSync(dest, 0o755);
     this.scannerBin = dest;
@@ -112,11 +142,13 @@ export class CodeAnalysisScanner {
           reject(new Error('Too many redirects while downloading scanner.'));
           return;
         }
-        https
+        const client = currentUrl.startsWith('http:') ? http : https;
+        client
           .get(currentUrl, (res) => {
             if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
               res.resume();
-              request(res.headers.location, redirects + 1);
+              const next = new URL(res.headers.location, currentUrl).toString();
+              request(next, redirects + 1);
               return;
             }
             if (res.statusCode !== 200) {
@@ -230,11 +262,26 @@ export class CodeAnalysisScanner {
 
   async runSast(i: SastInputs): Promise<number> {
     console.log('Starting AccuKnox SAST scan...');
+    if (i.aiAnalysis) {
+      try {
+        await this.installTool('codeassure', path.join('codeassure', 'codeassure'));
+      } catch (e) {
+        console.warn(
+          `WARNING: could not install codeassure (${e instanceof Error ? e.message : e}). ` +
+            'AI-SAST may be skipped; OpenGrep SAST will still run.'
+        );
+      }
+    }
     const args = ['scan', '--keep-results', ...this.softFailArg, 'sast', '--command', i.command];
     if (this.repoUrl) args.push('--repo-url', this.repoUrl);
     if (this.commitSha) args.push('--commit-sha', this.commitSha);
     args.push('--pipeline-id', this.pipelineId, '--job-url', this.jobUrl);
     if (i.severity.trim()) args.push('--severity', i.severity.trim());
+    if (i.aiAnalysis) {
+      args.push('--ai-analysis');
+      if (i.aiScanSeverity.trim()) args.push('--aiscan-severity', i.aiScanSeverity.trim());
+      if (i.codeassureConfig.trim()) args.push('--codeassure-config', i.codeassureConfig.trim());
+    }
     return this.exec(args);
   }
 
@@ -341,6 +388,11 @@ export class CodeAnalysisScanner {
       cmd,
       '--generate-sbom',
     ];
+    if (i.enrichLicenses) {
+      // Filesystem-only CLI flag; image/rootfs logs a warning and skips Syft.
+      await this.installTool('syft', 'syft');
+      args.push('--enrich-licenses');
+    }
     const code = await this.exec(args);
     try {
       if (fs.existsSync('results.json')) fs.copyFileSync('results.json', 'results-sbom.json');

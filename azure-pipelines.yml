@@ -1,0 +1,51 @@
+# Build the AccuKnox Code Analysis Azure DevOps extension (.vsix).
+# Customer scan pipelines should copy azure-pipelines.yml.example, not this file.
+
+trigger:
+  branches:
+    include:
+      - main
+      - feat/*
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: NodeTool@0
+    displayName: Use Node 20
+    inputs:
+      versionSpec: '20.x'
+
+  - script: npm ci
+    displayName: Install task dependencies
+    workingDirectory: src
+
+  - script: npm run build
+    displayName: Compile TypeScript
+    workingDirectory: src
+
+  - script: SCANNER_PLATFORMS=linux npm run fetch-scanner
+    displayName: Bundle Linux scanner CLI into task
+    workingDirectory: src
+
+  - script: npx --yes tfx-cli extension create --manifest-globs vss-extension.json --output-path $(Build.ArtifactStagingDirectory)
+    displayName: Package VSIX
+
+  - task: PublishBuildArtifacts@1
+    displayName: Publish VSIX artifact
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: vsix
+      publishLocation: Container
+
+  # Optional Marketplace publish. Set variable AZURE_DEVOPS_EXT_PAT (Publisher PAT
+  # with Marketplace publish) on the pipeline, then uncomment:
+  # - script: npx --yes tfx-cli extension publish --manifest-globs vss-extension.json --share-with $(publisherShareWith)
+  #   displayName: Publish to Marketplace
+  #   env:
+  #     AZURE_DEVOPS_EXT_PAT: $(AZURE_DEVOPS_EXT_PAT)

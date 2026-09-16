@@ -9,8 +9,18 @@ steps:
 # Run any combination of scans in a single task.
 # scanType accepts a comma/space separated list:
 #   sast, sca, secret, iac, ml, api-discovery, sbom
+# For AI-SAST, map ACCUKNOX_ENABLE_AI_SAST and ACCUKNOX_AI_API_KEY:
+#   env:
+#     ACCUKNOX_ENABLE_AI_SAST: 'TRUE'
+#     ACCUKNOX_AI_API_KEY: $(ACCUKNOX_AI_API_KEY)
 # -----------------------------------------------------------------------------
-- task: AccuKnox-Code-Analysis@2
+# If the Windows agent cannot reach GitHub, either ship a VSIX that bundles
+# accuknox-aspm-scanner.exe (npm run package), or drop the exe on the VM:
+#   scannerPath: 'C:\AccuKnox\accuknox-aspm-scanner.exe'
+# OpenGrep still needs to exist under %USERPROFILE%\AppData\Local\Programs\AccuKnox
+# (pre-install, or allow tool install network).
+# -----------------------------------------------------------------------------
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sast, sca, secret, iac'
     accuknoxEndpoint: '$(ACCUKNOX_ENDPOINT)'
@@ -20,6 +30,8 @@ steps:
 
     # SAST – override default severity (HIGH)
     sastSeverity: 'HIGH,CRITICAL'
+    # enableAiSast: true
+    # sastAiScanSeverity: 'HIGH,CRITICAL'
 
     # IaC – restrict to specific frameworks
     iacFramework: 'Kubernetes,Terraform'
@@ -27,7 +39,7 @@ steps:
 # -----------------------------------------------------------------------------
 # SBOM example (requires a Project created in the AccuKnox Console).
 # -----------------------------------------------------------------------------
-# - task: AccuKnox-Code-Analysis@2
+# - task: AccuKnox-Code-Analysis@3
 #   inputs:
 #     scanType: 'sbom'
 #     accuknoxEndpoint: '$(ACCUKNOX_ENDPOINT)'
@@ -36,4 +48,5 @@ steps:
 #     sbomScanType: 'filesystem'
 #     sbomScanPath: '.'
 #     sbomProjectName: 'my-project'
+#     # sbomEnrichLicenses: true   # filesystem only; scanner newer than v0.14.9
 #     softFail: true

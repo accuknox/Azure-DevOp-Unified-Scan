@@ -3,6 +3,11 @@ import { CodeAnalysisScanner, ScannerConfig } from './scanner';
 
 export const VALID_SCANS = ['sast', 'sca', 'secret', 'iac', 'ml', 'api-discovery', 'sbom'];
 
+/** Same truthy values the CLI accepts for ACCUKNOX_ENABLE_AI_SAST. */
+export function envFlagTrue(name: string): boolean {
+  return ['TRUE', '1', 'YES'].includes((process.env[name] || '').toUpperCase());
+}
+
 /** Normalise the scanType input (comma/space separated, case-insensitive) into a set of tokens. */
 export function parseScanTypes(raw: string): Set<string> {
   const selected = new Set<string>();
@@ -62,8 +67,10 @@ export async function run(): Promise<void> {
       endpoint,
       token,
       label,
-      version: tl.getInput('scannerVersion', false) || 'v0.14.7-rc.3',
+      version: tl.getInput('scannerVersion', false) || 'v0.15.1',
       softFail,
+      scannerPath: tl.getInput('scannerPath', false) || '',
+      scannerDownloadUrl: tl.getInput('scannerDownloadUrl', false) || '',
     };
 
     const scanner = new CodeAnalysisScanner(cfg);
@@ -86,6 +93,9 @@ export async function run(): Promise<void> {
         await scanner.runSast({
           command: tl.getInput('sastCommand', false) || '.',
           severity: tl.getInput('sastSeverity', false) || '',
+          aiAnalysis: tl.getBoolInput('enableAiSast', false) || envFlagTrue('ACCUKNOX_ENABLE_AI_SAST'),
+          aiScanSeverity: tl.getInput('sastAiScanSeverity', false) || 'HIGH,CRITICAL',
+          codeassureConfig: tl.getInput('sastCodeassureConfig', false) || '',
         })
       );
     }
@@ -154,6 +164,7 @@ export async function run(): Promise<void> {
           command: tl.getInput('sbomCommand', false) || '',
           severity: tl.getInput('sbomSeverity', false) || '',
           projectName: tl.getInput('sbomProjectName', false) || '',
+          enrichLicenses: tl.getBoolInput('sbomEnrichLicenses', false),
         })
       );
     }

@@ -8,8 +8,8 @@
     "category": "Utility",
     "author": "AccuKnox",
     "version": {
-        "Major": 2,
-        "Minor": 3,
+        "Major": 3,
+        "Minor": 5,
         "Patch": 0
     },
     "instanceNameFormat": "AccuKnox Code Analysis",
@@ -68,10 +68,28 @@
             "name": "scannerVersion",
             "type": "string",
             "label": "Scanner Version",
-            "defaultValue": "v0.14.7-rc.3",
+            "defaultValue": "v0.15.1",
             "required": false,
             "groupName": "common",
-            "helpMarkDown": "Git tag of the accuknox-aspm-scanner binary to download (must include the sca, ml and api-discovery scanners)."
+            "helpMarkDown": "Git tag of the accuknox-aspm-scanner binary to download from GitHub. Ignored when scannerPath is set or a bundled binary is present in the task."
+        },
+        {
+            "name": "scannerPath",
+            "type": "string",
+            "label": "Scanner Path",
+            "defaultValue": "",
+            "required": false,
+            "groupName": "common",
+            "helpMarkDown": "Absolute path to accuknox-aspm-scanner.exe (Windows) or accuknox-aspm-scanner already on the agent. Skips GitHub download. Use this when the agent cannot reach github.com."
+        },
+        {
+            "name": "scannerDownloadUrl",
+            "type": "string",
+            "label": "Scanner Download URL",
+            "defaultValue": "",
+            "required": false,
+            "groupName": "common",
+            "helpMarkDown": "Optional HTTPS URL of the CLI binary (internal Artifactory/Nexus). Used only when scannerPath is empty and no bundled binary is in the task. Overrides GitHub."
         },
         {
             "name": "softFail",
@@ -99,6 +117,35 @@
             "required": false,
             "groupName": "sast",
             "helpMarkDown": "Comma-separated severities (LOW, MEDIUM, HIGH, CRITICAL)."
+        },
+        {
+            "name": "enableAiSast",
+            "type": "boolean",
+            "label": "Enable AI-SAST",
+            "defaultValue": false,
+            "required": false,
+            "groupName": "sast",
+            "helpMarkDown": "After OpenGrep SAST, run CodeAssure AI analysis (--ai-analysis). Same as setting ACCUKNOX_ENABLE_AI_SAST=TRUE. Map ACCUKNOX_AI_API_KEY (provider-agnostic LLM key) as a secret via env:, and set codeassure.json api_key to $ACCUKNOX_AI_API_KEY."
+        },
+        {
+            "name": "sastAiScanSeverity",
+            "type": "string",
+            "label": "AI-SAST Severity",
+            "defaultValue": "HIGH,CRITICAL",
+            "required": false,
+            "groupName": "sast",
+            "visibleRule": "enableAiSast = true",
+            "helpMarkDown": "Comma-separated OpenGrep impacts to send to CodeAssure (--aiscan-severity). Default HIGH,CRITICAL."
+        },
+        {
+            "name": "sastCodeassureConfig",
+            "type": "string",
+            "label": "AI-SAST Config Path",
+            "defaultValue": "",
+            "required": false,
+            "groupName": "sast",
+            "visibleRule": "enableAiSast = true",
+            "helpMarkDown": "Optional path to codeassure.json (--codeassure-config). Set model.api_key to $ACCUKNOX_AI_API_KEY. If empty, CodeAssure uses ./codeassure.json when present."
         },
         {
             "name": "scaCommand",
@@ -283,6 +330,16 @@
             "required": false,
             "groupName": "sbom",
             "helpMarkDown": "Project name (AccuKnox entity). Required when SBOM is selected."
+        },
+        {
+            "name": "sbomEnrichLicenses",
+            "type": "boolean",
+            "label": "Enrich SBOM licenses (Syft)",
+            "defaultValue": false,
+            "required": false,
+            "groupName": "sbom",
+            "visibleRule": "sbomScanType = filesystem",
+            "helpMarkDown": "Filesystem SBOM only. After Trivy, run Syft and copy missing SPDX licenses onto matching packages (--enrich-licenses). Default off. Requires a scanner that supports this flag (newer than v0.14.9)."
         }
     ],
     "execution": {
