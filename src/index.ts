@@ -67,8 +67,13 @@ export async function run(): Promise<void> {
       endpoint,
       token,
       label,
-      version: tl.getInput('scannerVersion', false) || 'v0.14.9',
+      version: tl.getInput('scannerVersion', false) || 'v0.15.1',
       softFail,
+      scannerPath: tl.getInput('scannerPath', false) || '',
+      scannerDownloadUrl: tl.getInput('scannerDownloadUrl', false) || '',
+      containerMode:
+        tl.getBoolInput('containerMode', false) || envFlagTrue('ACCUKNOX_CONTAINER_MODE'),
+      scanImage: tl.getInput('scanImage', false) || '',
     };
 
     const scanner = new CodeAnalysisScanner(cfg);

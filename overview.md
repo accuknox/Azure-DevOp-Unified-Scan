@@ -15,9 +15,10 @@ Instead of adding a separate task for every scanner, configure one task, pick th
 
 ## Prerequisites
 
-- Any **Linux or Windows** Azure DevOps agent, hosted or self-hosted — SAST, SCA, Secret, IaC and SBOM run natively, with no Docker requirement.
-- **AI-SAST** needs a **Linux** agent. Enable with `enableAiSast` or `ACCUKNOX_ENABLE_AI_SAST=TRUE`. Map `ACCUKNOX_AI_API_KEY` on the task with `env:`, and set `codeassure.json` `api_key` to `$ACCUKNOX_AI_API_KEY`.
-- **Docker** is only needed if you select **ML Static Scan** or **API Discovery**, which still run in container mode.
+- Any **Linux or Windows** Azure DevOps agent, hosted or self-hosted — SAST, SCA, Secret, IaC and SBOM run natively by default.
+- **Container mode** (`containerMode: true` or `ACCUKNOX_CONTAINER_MODE=TRUE`) runs those scans in Docker instead, skips GitHub tool downloads, and uses `scanImage` / `SCAN_IMAGE` from an internal registry when public ECR is blocked. The agent needs Docker and must be able to pull (or already have) that image.
+- **AI-SAST** runs on **Linux or Windows**. Enable with `enableAiSast` or `ACCUKNOX_ENABLE_AI_SAST=TRUE`. Map `ACCUKNOX_AI_API_KEY` on the task with `env:`, and set `codeassure.json` `api_key` to `$ACCUKNOX_AI_API_KEY`.
+- **Docker** is also required for **ML Static Scan** and **API Discovery**.
 - An **AccuKnox Console** tenant, an **API token**, and a **label** to tag the uploaded results.
 
 ## Inputs
@@ -28,8 +29,12 @@ Instead of adding a separate task for every scanner, configure one task, pick th
 | `accuknoxEndpoint` | AccuKnox Console URL to push results to | Yes | — |
 | `accuknoxToken` | AccuKnox API token | Yes | — |
 | `accuknoxLabel` | Label for associating scan results | Yes | — |
-| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.9` |
+| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary (GitHub). Ignored if `scannerPath` or a bundled CLI is present | No | `v0.15.1` |
+| `scannerPath` | Absolute path to a CLI already on the agent. Skips GitHub | No | `""` |
+| `scannerDownloadUrl` | Internal HTTPS URL of the CLI. Used when path/bundle are empty | No | `""` |
 | `softFail` | Do not fail the task on findings | No | `true` |
+| `containerMode` | Docker `--container-mode`; skips GitHub `tool install` | No | `false` |
+| `scanImage` | `SCAN_IMAGE` (internal registry), e.g. `registry.internal/accuknox/opengrepjob:0.1.0` | No | `""` |
 
 Each scan also exposes its own optional inputs (see the README for the full table).
 
@@ -40,7 +45,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 1. SAST
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sast'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -50,10 +55,29 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
     softFail: true
 ```
 
+### 1a. SAST in container mode (internal registry, no GitHub)
+
+Mirror `public.ecr.aws/k9v9d5v2/accuknox/opengrepjob:0.1.0` into the customer registry, then:
+
+```yaml
+- task: AccuKnox-Code-Analysis@3
+  inputs:
+    scanType: 'sast'
+    accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
+    accuknoxToken: $(ACCUKNOX_TOKEN)
+    accuknoxLabel: $(ACCUKNOX_LABEL)
+    containerMode: true
+    scanImage: 'registry.internal/accuknox/opengrepjob:0.1.0'
+    enableAiSast: false
+    softFail: true
+```
+
+The agent needs Docker. Pre-pull or `docker load` the image so the job never reaches public ECR or GitHub.
+
 ### 1b. SAST with AI analysis
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   env:
     ACCUKNOX_ENABLE_AI_SAST: 'TRUE'
     ACCUKNOX_AI_API_KEY: $(ACCUKNOX_AI_API_KEY)
@@ -71,7 +95,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 2. SCA
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sca'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -84,7 +108,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 3. Secret
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'secret'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -96,7 +120,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 4. IaC
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'iac'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -108,7 +132,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 5. ML Static Scan
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'ml'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -120,7 +144,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 ### 6. API Discovery
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'api-discovery'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -136,7 +160,7 @@ All examples assume the credentials are defined as pipeline variables: `ACCUKNOX
 Filesystem SBOM:
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -152,7 +176,7 @@ Filesystem SBOM:
 Image SBOM (build/pull the image earlier in the same job):
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -167,7 +191,7 @@ Image SBOM (build/pull the image earlier in the same job):
 ### 8. Unified — multiple scans in one task
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sast, sca, secret, iac, sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)

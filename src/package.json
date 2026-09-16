@@ -1,12 +1,13 @@
 {
   "name": "accuknox-code-analysis",
-  "version": "2.4.2",
+  "version": "3.6.1",
   "description": "Unified AccuKnox ASPM code-analysis task for Azure DevOps (SAST, SCA, Secret, IaC, ML, API Discovery, SBOM).",
   "main": "index.js",
   "scripts": {
     "build": "tsc",
+    "fetch-scanner": "node ../scripts/fetch-scanner-binaries.js",
     "test": "tsc && node test.js",
-    "package": "npm run build && cd .. && npx --yes tfx-cli extension create --manifest-globs vss-extension.json"
+    "package": "npm run build && SCANNER_PLATFORMS=linux BUNDLE_LINUX_TOOLS=0 npm run fetch-scanner && cd .. && npx --yes tfx-cli extension create --manifest-globs vss-extension.json"
   },
   "keywords": [
     "accuknox",

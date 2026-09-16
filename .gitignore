@@ -135,3 +135,8 @@ dist
 .yarn/install-state.gz
 .pnp.*
 .env
+
+# Scanner CLI binaries fetched into the VSIX (see scripts/fetch-scanner-binaries.js)
+src/bin/accuknox-aspm-scanner
+src/bin/accuknox-aspm-scanner.exe
+src/bundled-tools/

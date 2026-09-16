@@ -8,9 +8,9 @@
     "category": "Utility",
     "author": "AccuKnox",
     "version": {
-        "Major": 2,
-        "Minor": 4,
-        "Patch": 2
+        "Major": 3,
+        "Minor": 6,
+        "Patch": 1
     },
     "instanceNameFormat": "AccuKnox Code Analysis",
     "groups": [
@@ -68,10 +68,28 @@
             "name": "scannerVersion",
             "type": "string",
             "label": "Scanner Version",
-            "defaultValue": "v0.14.9",
+            "defaultValue": "v0.15.1",
             "required": false,
             "groupName": "common",
-            "helpMarkDown": "Git tag of the accuknox-aspm-scanner binary to download (must include the sca, ml and api-discovery scanners)."
+            "helpMarkDown": "Git tag of the accuknox-aspm-scanner binary to download from GitHub. Ignored when scannerPath is set or a bundled binary is present in the task."
+        },
+        {
+            "name": "scannerPath",
+            "type": "string",
+            "label": "Scanner Path",
+            "defaultValue": "",
+            "required": false,
+            "groupName": "common",
+            "helpMarkDown": "Absolute path to accuknox-aspm-scanner.exe (Windows) or accuknox-aspm-scanner already on the agent. Skips GitHub download. Use this when the agent cannot reach github.com."
+        },
+        {
+            "name": "scannerDownloadUrl",
+            "type": "string",
+            "label": "Scanner Download URL",
+            "defaultValue": "",
+            "required": false,
+            "groupName": "common",
+            "helpMarkDown": "Optional HTTPS URL of the CLI binary (internal Artifactory/Nexus). Used only when scannerPath is empty and no bundled binary is in the task. Overrides GitHub."
         },
         {
             "name": "softFail",
@@ -81,6 +99,24 @@
             "required": false,
             "groupName": "common",
             "helpMarkDown": "Do not return a non-zero exit code if a scan finds issues (applies to all selected scans)."
+        },
+        {
+            "name": "containerMode",
+            "type": "boolean",
+            "label": "Container Mode",
+            "defaultValue": false,
+            "required": false,
+            "groupName": "common",
+            "helpMarkDown": "Run scanners in Docker (--container-mode). Skips native tool install (no GitHub). Agent needs Docker. Same as ACCUKNOX_CONTAINER_MODE=TRUE. Set Scan Image to an internal-registry ref when public.ecr.aws is blocked."
+        },
+        {
+            "name": "scanImage",
+            "type": "string",
+            "label": "Scan Image",
+            "defaultValue": "",
+            "required": false,
+            "groupName": "common",
+            "helpMarkDown": "Sets SCAN_IMAGE for container mode. Example: registry.internal/accuknox/opengrepjob:0.1.0. Leave empty to use the public ECR default (SAST: accuknox/opengrepjob:0.1.0). One image per task run — use a separate job per scan type if you need different images."
         },
         {
             "name": "sastCommand",

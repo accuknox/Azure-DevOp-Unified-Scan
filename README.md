@@ -22,7 +22,7 @@ Instead of wiring up a separate task for every scanner, configure **one task**, 
 ## ⚠️ Prerequisites
 
 - 🖥️ **Any Linux or Windows agent** – SAST, SCA, Secret, IaC and SBOM run the scanner natively, so Microsoft-hosted agents work; no Docker required.
-- 🤖 **AI-SAST** – Native CodeAssure install is Linux-only. Enable with `enableAiSast` or `ACCUKNOX_ENABLE_AI_SAST=TRUE`. Put the LLM key in `ACCUKNOX_AI_API_KEY` (provider-agnostic) and map it on the task with `env:`. In `codeassure.json` set `"api_key": "$ACCUKNOX_AI_API_KEY"`. Optionally pass the config path as `sastCodeassureConfig`.
+- 🤖 **AI-SAST** – Native CodeAssure install on Linux and Windows. Enable with `enableAiSast` or `ACCUKNOX_ENABLE_AI_SAST=TRUE`. Put the LLM key in `ACCUKNOX_AI_API_KEY` (provider-agnostic) and map it on the task with `env:`. In `codeassure.json` set `"api_key": "$ACCUKNOX_AI_API_KEY"`. Optionally pass the config path as `sastCodeassureConfig`.
 - 🐳 **Docker (only for ML Static Scan and API Discovery)** – These two scans still run in container mode, so selecting either one requires an agent with Docker available and network access to pull scanner images.
 - 🔐 **AccuKnox Console Access** – Sign in to your AccuKnox tenant.
 - 🗝️ **API Token** – Retrieve this from the AccuKnox Console (**Settings → Tokens**).
@@ -61,7 +61,7 @@ pool:
   name: selfhosted
 
 steps:
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     # Pick any combination of scans
     scanType: 'sast, sca, secret, iac'
@@ -84,7 +84,7 @@ steps:
 ### 1. SAST
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sast'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -94,12 +94,29 @@ steps:
     softFail: true
 ```
 
-### 1b. SAST with AI analysis
+### 1a. SAST in container mode (internal registry)
 
-Enable with `enableAiSast: true` or `ACCUKNOX_ENABLE_AI_SAST=TRUE`. Store the LLM key in `ACCUKNOX_AI_API_KEY` (any provider). Use a Linux agent.
+Does not call GitHub `tool install`. Mirror `public.ecr.aws/k9v9d5v2/accuknox/opengrepjob:0.1.0` into the customer registry first.
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
+  inputs:
+    scanType: 'sast'
+    accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
+    accuknoxToken: $(ACCUKNOX_TOKEN)
+    accuknoxLabel: $(ACCUKNOX_LABEL)
+    containerMode: true
+    scanImage: 'registry.internal/accuknox/opengrepjob:0.1.0'
+    enableAiSast: false
+    softFail: true
+```
+
+### 1b. SAST with AI analysis
+
+Enable with `enableAiSast: true` or `ACCUKNOX_ENABLE_AI_SAST=TRUE`. Store the LLM key in `ACCUKNOX_AI_API_KEY` (any provider). Works on Linux and Windows agents.
+
+```yaml
+- task: AccuKnox-Code-Analysis@3
   env:
     ACCUKNOX_ENABLE_AI_SAST: 'TRUE'   # optional if enableAiSast is true
     ACCUKNOX_AI_API_KEY: $(ACCUKNOX_AI_API_KEY)
@@ -132,7 +149,7 @@ Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `ap
 ### 2. SCA
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sca'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -145,7 +162,7 @@ Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `ap
 ### 3. Secret
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'secret'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -157,7 +174,7 @@ Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `ap
 ### 4. IaC
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'iac'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -169,7 +186,7 @@ Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `ap
 ### 5. ML Static Scan
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'ml'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -181,7 +198,7 @@ Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `ap
 ### 6. API Discovery
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'api-discovery'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -195,7 +212,7 @@ Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `ap
 > **Prerequisite — Create a Project.** To associate SBOM data with the correct entity, create a **Project** in the AccuKnox Console first (**SBOM → Projects → New Project**). Use **Container** classifier for an image SBOM or **Application** for a filesystem SBOM, and pass the project name as `sbomProjectName`.
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -213,7 +230,7 @@ Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `ap
 ### 8. Unified — Multiple Scans in One Task
 
 ```yaml
-- task: AccuKnox-Code-Analysis@2
+- task: AccuKnox-Code-Analysis@3
   inputs:
     scanType: 'sast, sca, secret, iac, sbom'
     accuknoxEndpoint: $(ACCUKNOX_ENDPOINT)
@@ -240,8 +257,12 @@ Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `ap
 | `accuknoxEndpoint` | URL of the AccuKnox Console to push results | Yes | — |
 | `accuknoxToken` | API token for authenticating with AccuKnox SaaS | Yes | — |
 | `accuknoxLabel` | Label used in AccuKnox SaaS to organise results | Yes | — |
-| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary | No | `v0.14.9` |
+| `scannerVersion` | Git tag of the `accuknox-aspm-scanner` binary (GitHub). Ignored if `scannerPath` or a bundled CLI is present | No | `v0.15.1` |
+| `scannerPath` | Absolute path to a CLI already on the agent. Skips GitHub download | No | `""` |
+| `scannerDownloadUrl` | Internal HTTPS URL of the CLI binary. Used when path/bundle are empty | No | `""` |
 | `softFail` | Prevent the task from failing on findings (all scans) | No | `true` |
+| `containerMode` | Run scanners in Docker (`--container-mode`). Skips GitHub `tool install`. Same as `ACCUKNOX_CONTAINER_MODE=TRUE`. Agent needs Docker. | No | `false` |
+| `scanImage` | Sets `SCAN_IMAGE` (internal registry). Example: `registry.internal/accuknox/opengrepjob:0.1.0`. One image per job. | No | `""` (public ECR default) |
 
 ### SAST (`sast`)
 
@@ -309,8 +330,8 @@ Example `codeassure.json` — the key name is AccuKnox-generic; `provider` / `ap
 ## 🔍 How It Works
 
 1. **Pipeline runs** – A push/PR triggers the pipeline containing the task.
-2. **Scanner setup (once)** – The task validates credentials, parses `scanType`, and downloads the `accuknox-aspm-scanner` binary for the requested `scannerVersion`.
-3. **Selected scans run** – Each enabled scan builds its arguments from your `*Command` and scan-specific inputs. Most run natively on the agent; ML and API Discovery run in `--container-mode`:
+2. **Scanner setup (once)** – The task validates credentials, parses `scanType`, then resolves the CLI in this order: `scannerPath` on the agent, a binary bundled in the VSIX (`src/bin/`), `scannerDownloadUrl`, or GitHub `scannerVersion`. Use `scannerPath` or the bundled VSIX when the agent cannot reach github.com. Native mode still runs `tool install` (GitHub) unless tools are already on the agent. **Container mode** (`containerMode: true`) skips `tool install` and runs Docker instead; set `scanImage` to an internal-registry copy of the scanner image.
+3. **Selected scans run** – Each enabled scan builds its arguments from your `*Command` and scan-specific inputs. With `containerMode`, SAST/SCA/Secret/IaC/SBOM also use `--container-mode`. ML and API Discovery always use Docker:
    - **SAST** → static application security analysis (optional **AI-SAST** via `enableAiSast`)
    - **SCA** → dependency/composition analysis
    - **Secret** → secret detection

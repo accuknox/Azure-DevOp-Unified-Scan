@@ -1,8 +1,9 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import * as http from 'http';
 import * as https from 'https';
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 
 const SCANNER_BASE_URL = 'https://github.com/accuknox/aspm-scanner-cli/releases/download';
 
@@ -12,6 +13,20 @@ export interface ScannerConfig {
   label: string;
   version: string;
   softFail: boolean;
+  /** Absolute path to accuknox-aspm-scanner[.exe] already on the agent. Skips download. */
+  scannerPath?: string;
+  /** Alternate HTTPS URL to fetch the CLI (internal mirror). Overrides GitHub. */
+  scannerDownloadUrl?: string;
+  /**
+   * Run scanners with --container-mode (Docker). Skips native `tool install`
+   * so the agent never downloads OpenGrep/Trivy from GitHub.
+   */
+  containerMode?: boolean;
+  /**
+   * Full image ref for SCAN_IMAGE (internal registry). Required in practice
+   * when the agent cannot pull public.ecr.aws.
+   */
+  scanImage?: string;
 }
 
 export interface SastInputs {
@@ -95,13 +110,34 @@ export class CodeAnalysisScanner {
         : 'unknown';
   }
 
-  /** Download the accuknox-aspm-scanner binary once and make it executable. */
+  /** Resolve accuknox-aspm-scanner: explicit path, VSIX-bundled copy, then download. */
   async setup(): Promise<void> {
     const isWindows = process.platform === 'win32';
     const binName = isWindows ? 'accuknox-aspm-scanner.exe' : 'accuknox-aspm-scanner';
+
+    const explicit = (this.cfg.scannerPath || '').trim();
+    if (explicit) {
+      if (!fs.existsSync(explicit)) {
+        throw new Error(`scannerPath not found: ${explicit}`);
+      }
+      this.scannerBin = explicit;
+      console.log(`Using scanner from scannerPath: ${explicit}`);
+      return;
+    }
+
+    const bundled = path.join(__dirname, 'bin', binName);
+    if (fs.existsSync(bundled)) {
+      if (!isWindows) fs.chmodSync(bundled, 0o755);
+      this.scannerBin = bundled;
+      console.log(`Using bundled AccuKnox ASPM scanner at ${bundled}`);
+      return;
+    }
+
     const dest = path.join(os.tmpdir(), binName);
-    const url = `${SCANNER_BASE_URL}/${this.cfg.version}/${binName}`;
-    console.log(`Downloading AccuKnox ASPM Scanner (${this.cfg.version}, ${process.platform})...`);
+    const url =
+      (this.cfg.scannerDownloadUrl || '').trim() ||
+      `${SCANNER_BASE_URL}/${this.cfg.version}/${binName}`;
+    console.log(`Downloading AccuKnox ASPM Scanner from ${url}...`);
     await this.download(url, dest);
     if (!isWindows) fs.chmodSync(dest, 0o755);
     this.scannerBin = dest;
@@ -116,11 +152,13 @@ export class CodeAnalysisScanner {
           reject(new Error('Too many redirects while downloading scanner.'));
           return;
         }
-        https
+        const client = currentUrl.startsWith('http:') ? http : https;
+        client
           .get(currentUrl, (res) => {
             if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
               res.resume();
-              request(res.headers.location, redirects + 1);
+              const next = new URL(res.headers.location, currentUrl).toString();
+              request(next, redirects + 1);
               return;
             }
             if (res.statusCode !== 200) {
@@ -168,9 +206,41 @@ export class CodeAnalysisScanner {
     return [base, `${base}.exe`, `${base}.bat`, `${base}.cmd`].some((p) => fs.existsSync(p));
   }
 
+  /**
+   * Seed the agent tools dir from a tarball shipped in the VSIX at
+   * src/bundled-tools/<type>.tar.gz. Same layout as `tool install` extractall.
+   * Avoids GitHub when the agent cannot reach github.com.
+   */
+  private seedFromVsix(type: string, verifyRel: string): boolean {
+    const archive = path.join(__dirname, 'bundled-tools', `${type}.tar.gz`);
+    if (!fs.existsSync(archive)) return false;
+    fs.mkdirSync(this.toolsDir, { recursive: true });
+    console.log(`Installing scanner tool '${type}' from VSIX bundle (${archive})...`);
+    const result = spawnSync('tar', ['-xzf', archive, '-C', this.toolsDir], {
+      encoding: 'utf8',
+    });
+    if (result.status !== 0) {
+      console.warn(
+        `WARNING: failed to extract bundled '${type}': ${result.stderr || result.error?.message || 'unknown error'}`
+      );
+      return false;
+    }
+    const exe = path.join(this.toolsDir, verifyRel);
+    try {
+      if (fs.existsSync(exe)) fs.chmodSync(exe, 0o755);
+    } catch {
+      /* ignore */
+    }
+    return this.toolExists(verifyRel);
+  }
+
   private async installTool(type: string, verifyRel: string): Promise<void> {
     if (this.toolExists(verifyRel)) {
       console.log(`Scanner tool '${type}' already present, skipping install.`);
+      return;
+    }
+    if (this.seedFromVsix(type, verifyRel)) {
+      console.log(`Scanner tool '${type}' installed from VSIX at ${path.join(this.toolsDir, verifyRel)}`);
       return;
     }
     for (let attempt = 1; attempt <= 3; attempt++) {
@@ -188,6 +258,13 @@ export class CodeAnalysisScanner {
 
   /** Install local tool binaries for whichever selected scans run natively. */
   async installTools(selected: Set<string>): Promise<void> {
+    if (this.cfg.containerMode) {
+      console.log(
+        'Container mode enabled: skipping native tool install (no GitHub downloads). ' +
+          'Docker must be available and SCAN_IMAGE / scanImage must point at a reachable registry.'
+      );
+      return;
+    }
     const needed = new Map<string, string>();
     for (const scan of selected) {
       const entry = CodeAnalysisScanner.TOOL_FOR_SCAN[scan];
@@ -200,16 +277,23 @@ export class CodeAnalysisScanner {
 
   /** Common env injected into every scanner invocation. */
   private scanEnv(): NodeJS.ProcessEnv {
-    return {
+    const env: NodeJS.ProcessEnv = {
       ...process.env,
       ACCUKNOX_ENDPOINT: this.cfg.endpoint,
       ACCUKNOX_TOKEN: this.cfg.token,
       ACCUKNOX_LABEL: this.cfg.label,
     };
+    const image = (this.cfg.scanImage || '').trim();
+    if (image) env.SCAN_IMAGE = image;
+    return env;
   }
 
   private get softFailArg(): string[] {
     return this.cfg.softFail ? ['--softfail'] : [];
+  }
+
+  private get containerModeArg(): string[] {
+    return this.cfg.containerMode ? ['--container-mode'] : [];
   }
 
   /** Run the scanner binary with the given args; resolves the exit code. */
@@ -244,7 +328,15 @@ export class CodeAnalysisScanner {
         );
       }
     }
-    const args = ['scan', '--keep-results', ...this.softFailArg, 'sast', '--command', i.command];
+    const args = [
+      'scan',
+      '--keep-results',
+      ...this.softFailArg,
+      'sast',
+      '--command',
+      i.command,
+      ...this.containerModeArg,
+    ];
     if (this.repoUrl) args.push('--repo-url', this.repoUrl);
     if (this.commitSha) args.push('--commit-sha', this.commitSha);
     args.push('--pipeline-id', this.pipelineId, '--job-url', this.jobUrl);
@@ -259,7 +351,7 @@ export class CodeAnalysisScanner {
 
   async runSca(i: ScaInputs): Promise<number> {
     console.log('Starting AccuKnox SCA scan...');
-    const args = ['scan', ...this.softFailArg, 'sca', '--command', i.command];
+    const args = ['scan', ...this.softFailArg, 'sca', '--command', i.command, ...this.containerModeArg];
     if (i.severity.trim()) args.push('--severity', i.severity.trim());
     return this.exec(args);
   }
@@ -274,7 +366,15 @@ export class CodeAnalysisScanner {
     }
     let command = i.command;
     if (i.additionalArguments.trim()) command = `${command} ${i.additionalArguments.trim()}`;
-    const args = ['scan', '--keep-results', ...this.softFailArg, 'secret', '--command', command];
+    const args = [
+      'scan',
+      '--keep-results',
+      ...this.softFailArg,
+      'secret',
+      '--command',
+      command,
+      ...this.containerModeArg,
+    ];
     return this.exec(args);
   }
 
@@ -300,7 +400,7 @@ export class CodeAnalysisScanner {
       }
       cmdArgs = parts.join(' ');
     }
-    const args = ['scan', ...this.softFailArg, 'iac', '--command', cmdArgs];
+    const args = ['scan', ...this.softFailArg, 'iac', '--command', cmdArgs, ...this.containerModeArg];
     if (this.repoUrl) args.push('--repo-url', this.repoUrl);
     if (this.commitRef) args.push('--repo-branch', this.commitRef);
     return this.exec(args);
@@ -360,10 +460,19 @@ export class CodeAnalysisScanner {
       cmd,
       '--generate-sbom',
     ];
+    if (this.cfg.containerMode) {
+      args.push('--container-mode');
+    }
     if (i.enrichLicenses) {
       // Filesystem-only CLI flag; image/rootfs logs a warning and skips Syft.
-      await this.installTool('syft', 'syft');
-      args.push('--enrich-licenses');
+      if (this.cfg.containerMode) {
+        console.warn(
+          'WARNING: sbomEnrichLicenses needs a local Syft binary; skipped in container mode.'
+        );
+      } else {
+        await this.installTool('syft', 'syft');
+        args.push('--enrich-licenses');
+      }
     }
     const code = await this.exec(args);
     try {

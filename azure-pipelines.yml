@@ -29,6 +29,10 @@ steps:
     displayName: Compile TypeScript
     workingDirectory: src
 
+  - script: npm run fetch-scanner
+    displayName: Bundle Windows scanner CLI into task
+    workingDirectory: src
+
   - script: npx --yes tfx-cli extension create --manifest-globs vss-extension.json --output-path $(Build.ArtifactStagingDirectory)
     displayName: Package VSIX
 
